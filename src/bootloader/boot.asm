@@ -30,7 +30,7 @@ ebr_drive_number:           db 0                    ; 0x00 floppy, 0x80 hdd, use
                             db 0                    ; reserved
 ebr_signature:              db 29h
 ebr_volume_id:              db 12h, 34h, 56h, 78h   ; serial number, value doesn't matter
-ebr_volume_label:           db 'NANOBYTE OS'        ; 11 bytes, padded with spaces
+ebr_volume_label:           db 'DOGE     OS'        ; 11 bytes, padded with spaces
 ebr_system_id:              db 'FAT12   '           ; 8 bytes
 
 ;
@@ -58,10 +58,6 @@ start:
     ; read something from floppy disk
     ; BIOS should set DL to drive number
     mov [ebr_drive_number], dl
-
-    ; show loading message
-    ;mov si, msg_loading
-    ;call puts
 
     ; read drive parameters (sectors per track and head count),
     ; instead of relying on data on formatted disk

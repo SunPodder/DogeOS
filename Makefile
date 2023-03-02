@@ -1,60 +1,73 @@
 CC=gcc
+ASM=nasm
+BUILD_DIR=build
+SRC_DIR=src
+
+GREEN=\033[32m
+WHITE=\033[0m
+YELLOW=\033[33m
+BLUE=\033[34m
 
 
-.PHONY: all floppy_img kernel bootloader clean tools_fat always
+.PHONY: all floppy kernel bootloader clean tools always
 
-all: floppy_img tools_fat
+all: floppy
 
 
 #
 # Floppy Image
 #
-floppy_img: build/main_floppy.img
-
-build/main_floppy.img: bootloader kernel
-	dd if=/dev/zero of=build/main_floppy.img bs=512 count=2880
-	mkfs.fat -F 12 -n "NBOS" build/main_floppy.img
-	dd if=build/bootloader.bin of=build/main_floppy.img conv=notrunc
-	mcopy -i build/main_floppy.img build/kernel.bin "::kernel.bin"
-	mcopy -i build/main_floppy.img src/res/hello.txt "::hello.txt"
+floppy: $(BUILD_DIR)/floppy.img
+$(BUILD_DIR)/floppy.img: bootloader kernel
+	@echo "$(YELLOW)Creating floppy image$(WHITE)"
+	@dd if=/dev/zero of=$(BUILD_DIR)/floppy.img bs=512 count=2880
+	@echo "$(YELLOW)Creating FAT12 file system$(WHITE)"
+	@mkfs.fat -F 12 -n "DogeOS" $(BUILD_DIR)/floppy.img
+	@dd if=$(BUILD_DIR)/bootloader.bin of=$(BUILD_DIR)/floppy.img conv=notrunc
+	@echo "$(GREEN)Copying kernel..."
+	@mcopy -i $(BUILD_DIR)/floppy.img $(BUILD_DIR)/kernel.bin "::kernel.bin"
+	@echo "$(GREEN)Copying hello.txt"
+	@mcopy -i $(BUILD_DIR)/floppy.img $(SRC_DIR)/res/hello.txt "::hello.txt"
 
 
 
 #
 # bootloader
 #
-bootloader: build/bootloader.bin
-
-build/bootloader.bin: always src/bootloader/boot.asm
-	nasm src/bootloader/boot.asm -f bin -o build/bootloader.bin
+bootloader: always $(BUILD_DIR)/bootloader.bin
+$(BUILD_DIR)/bootloader.bin: $(SRC_DIR)/bootloader/boot.asm
+	@echo "$(BLUE)Compiling bootloader$(WHITE)"
+	@$(ASM) $(SRC_DIR)/bootloader/boot.asm -f bin -o $(BUILD_DIR)/bootloader.bin
 
 
 #
 #kernel
 #
-kernel: always build/kernel.bin
-
-build/kernel.bin: src/kernel/main.asm
-	nasm src/kernel/main.asm -f bin -o build/kernel.bin
+kernel: always $(BUILD_DIR)/kernel.bin
+$(BUILD_DIR)/kernel.bin: $(SRC_DIR)/kernel/main.asm
+	@echo "$(BLUE)Compiling kernel$(WHITE)"
+	@$(ASM) $(SRC_DIR)/kernel/main.asm -f bin -o $(BUILD_DIR)/kernel.bin
 
 
 #
 #tools
 #
-tools_fat: build/tools/fat
-build/tools/fat: always tools/fat/fat.c
-	mkdir -p build/tools
-	gcc tools/fat/fat.c -g -o build/tools/fat
+tools_fat: $(BUILD_DIR)/tools/fat
+$(BUILD_DIR)/tools/fat: always tools/fat/fat.c
+	@mkdir -p $(BUILD_DIR)/tools
+	$(CC) tools/fat/fat.c -g -o $(BUILD_DIR)/tools/fat
 
 
 
 
 
-run: floppy_img
-	qemu-system-i386 -nographic -fda build/main_floppy.img
+run: floppy
+	@echo "$(BLUE)Starting qemu...$(WHITE)"
+	@qemu-system-i386 -nographic -fda $(BUILD_DIR)/floppy.img
 
 always:
-	mkdir -p build
+	@mkdir -p $(BUILD_DIR)
 
 clean:
-	rm -r build/*
+	@echo "$(YELLOW)Cleaning workspace...$(WHITE)"
+	@rm -r $(BUILD_DIR)/*
